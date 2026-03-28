@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Weather — 3-Day Corridor Forecast</title>
+<style>
+  /* ── Reset & base ─────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+font-family: Georgia, Cambria, serif;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+transition: background 0.4s, color 0.3s;
+}
+
+/* ── Theme variables ──────────────────────────────────── */
+body.light {
+–page-bg:         linear-gradient(160deg,#eef4ff 0%,#f5f8ff 50%,#e8f0fa 100%);
+–page-color:      #1a2a45;
+–header-bg:       rgba(255,255,255,0.88);
+–header-border:   rgba(100,150,220,0.18);
+–title-color:     #1a3a6e;
+–subtitle-color:  #6080b0;
+–ctrl-bg:         rgba(210,225,255,0.45);
+–ctrl-border:     rgba(100,150,220,0.3);
+–label-color:     #5070a0;
+–track-bg:        linear-gradient(90deg,#4a80d4,#6aa8f0);
+–pill-active:     #2a5ab8;
+–pill-inactive:   rgba(70,100,160,0.38);
+–sel-bg:          rgba(255,255,255,0.92);
+–sel-border:      rgba(100,150,220,0.35);
+–sel-color:       #1a3a6e;
+–badge-bg:        rgba(200,218,255,0.55);
+–badge-border:    rgba(100,150,220,0.2);
+–badge-color:     #3a60a8;
+–wrap-shadow:     0 4px 30px rgba(80,120,200,0.12);
+–wrap-border:     rgba(180,200,240,0.5);
+–thead-bg:        rgba(235,242,255,0.97);
+–thead-color:     #3a60a8;
+–thead-sub:       #7090c0;
+–thead-border:    rgba(150,185,240,0.4);
+–thead-divider:   2px solid rgba(150,185,240,0.5);
+–col0-tint:       rgba(210,228,255,0.6);
+–col1-tint:       rgba(215,232,252,0.45);
+–col2-tint:       rgba(218,235,250,0.3);
+–row-even:        rgba(248,251,255,0.92);
+–row-odd:         rgba(240,246,255,0.72);
+–row-hover:       rgba(220,234,255,0.85);
+–row-border:      rgba(180,205,240,0.35);
+–city-color:      #1a3a6e;
+–body0-tint:      rgba(210,228,255,0.25);
+–body1-tint:      rgba(215,232,252,0.18);
+–body2-tint:      rgba(218,235,250,0.10);
+–cell-border:     rgba(170,200,240,0.3);
+–high-color:      #c44a18;
+–low-color:       #2a72c4;
+–div-color:       rgba(0,0,0,0.12);
+–precip-high:     #1a7ec4;
+–precip-low:      #8098be;
+–legend-color:    #7090b0;
+background: var(–page-bg);
+color: var(–page-color);
+}
+
+body.dark {
+–page-bg:         linear-gradient(135deg,#0a1628 0%,#0d2240 40%,#112b4e 70%,#0e1e35 100%);
+–page-color:      #e8f0fe;
+–header-bg:       rgba(5,15,35,0.82);
+–header-border:   rgba(100,160,255,0.18);
+–title-color:     #c8deff;
+–subtitle-color:  #6899cc;
+–ctrl-bg:         rgba(255,255,255,0.05);
+–ctrl-border:     rgba(100,160,255,0.2);
+–label-color:     #6899cc;
+–track-bg:        linear-gradient(90deg,#3a6fc4,#5a9de8);
+–pill-active:     #7fb3ff;
+–pill-inactive:   rgba(120,160,210,0.4);
+–sel-bg:          #0f2040;
+–sel-border:      rgba(100,160,255,0.25);
+–sel-color:       #c8deff;
+–badge-bg:        rgba(30,60,120,0.5);
+–badge-border:    rgba(100,160,255,0.15);
+–badge-color:     #8bb8ee;
+–wrap-shadow:     0 8px 40px rgba(0,0,0,0.4);
+–wrap-border:     rgba(100,160,255,0.15);
+–thead-bg:        rgba(10,22,50,0.9);
+–thead-color:     #7fb3ff;
+–thead-sub:       #4a6e9a;
+–thead-border:    rgba(100,160,255,0.12);
+–thead-divider:   2px solid rgba(100,160,255,0.2);
+–col0-tint:       rgba(50,90,160,0.15);
+–col1-tint:       rgba(40,75,140,0.10);
+–col2-tint:       rgba(30,60,120,0.07);
+–row-even:        rgba(12,24,52,0.6);
+–row-odd:         rgba(8,18,42,0.75);
+–row-hover:       rgba(30,60,120,0.4);
+–row-border:      rgba(100,160,255,0.07);
+–city-color:      #c0d8ff;
+–body0-tint:      rgba(55,100,175,0.12);
+–body1-tint:      rgba(45,85,155,0.08);
+–body2-tint:      rgba(35,70,135,0.05);
+–cell-border:     rgba(100,160,255,0.08);
+–high-color:      #ff8c6a;
+–low-color:       #7ab0e8;
+–div-color:       rgba(255,255,255,0.15);
+–precip-high:     #5bc4ff;
+–precip-low:      #4a7aaa;
+–legend-color:    #7090b8;
+background: var(–page-bg);
+color: var(–page-color);
+}
+
+/* ── Header ───────────────────────────────────────────── */
+header {
+position: sticky; top: 0; z-index: 10;
+padding: 12px 24px 10px;
+background: var(–header-bg);
+border-bottom: 1px solid var(–header-border);
+backdrop-filter: blur(14px);
+-webkit-backdrop-filter: blur(14px);
+transition: background 0.4s, border-color 0.3s;
+}
+.header-inner { max-width: 1100px; margin: 0 auto; }
+
+.title-row {
+display: flex; align-items: center; gap: 10; margin-bottom: 10px;
+}
+.title-icon { font-size: 22px; }
+.title-text { font-size: clamp(15px,3vw,21px); font-weight: 700;
+letter-spacing: 0.05em; color: var(–title-color);
+line-height: 1.1; transition: color 0.3s; }
+.subtitle-text { font-size: 9px; color: var(–subtitle-color);
+letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.3s; }
+
+.controls-row {
+display: flex; align-items: center; gap: 16px;
+flex-wrap: nowrap; overflow-x: auto;
+}
+
+/* ── Pill toggle ──────────────────────────────────────── */
+.pill {
+display: flex; align-items: center; gap: 10; flex-shrink: 0;
+background: var(–ctrl-bg); border-radius: 40px; padding: 6px 8px;
+border: 1px solid var(–ctrl-border);
+transition: background 0.35s, border-color 0.35s;
+}
+.pill-label {
+font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+color: var(–pill-inactive); transition: color 0.25s;
+user-select: none; padding: 2px 6px; cursor: default;
+}
+.pill-label.active { color: var(–pill-active); }
+
+.toggle-track {
+width: 48px; height: 26px; border-radius: 13px;
+background: var(–track-bg); cursor: pointer;
+position: relative; flex-shrink: 0;
+box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+border: 1px solid var(–ctrl-border);
+transition: background 0.35s;
+}
+.toggle-knob {
+position: absolute; top: 3px; left: 3px;
+width: 18px; height: 18px; border-radius: 50%;
+background: #fff;
+transition: left 0.25s cubic-bezier(.4,0,.2,1);
+box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+}
+.toggle-knob.right { left: 25px; }
+
+/* ── Select ───────────────────────────────────────────── */
+.start-day-wrap {
+display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.start-day-label {
+font-size: 12px; color: var(–label-color);
+letter-spacing: 0.08em; white-space: nowrap;
+font-family: Georgia, serif; transition: color 0.3s;
+}
+select#offset {
+background: var(–sel-bg); border: 1px solid var(–sel-border);
+border-radius: 8px; color: var(–sel-color);
+padding: 7px 12px; font-size: 13px;
+font-family: Georgia, serif; cursor: pointer; outline: none;
+min-width: 148px; transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+/* ── Day badges ───────────────────────────────────────── */
+.badges { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
+.badge {
+background: var(–badge-bg); border: 1px solid var(–badge-border);
+border-radius: 6px; padding: 4px 10px;
+font-size: 11px; color: var(–badge-color);
+letter-spacing: 0.06em; font-weight: 600; white-space: nowrap;
+transition: background 0.3s, color 0.3s;
+}
+
+/* ── Main ─────────────────────────────────────────────── */
+main {
+flex: 1; padding: 24px 16px 32px;
+max-width: 1100px; width: 100%; margin: 0 auto;
+}
+
+/* ── Table wrapper ────────────────────────────────────── */
+.table-wrap {
+overflow-x: auto; border-radius: 16px;
+box-shadow: var(–wrap-shadow);
+border: 1px solid var(–wrap-border);
+transition: box-shadow 0.3s, border-color 0.3s;
+}
+table {
+width: 100%; border-collapse: collapse; min-width: 560px;
+}
+
+/* ── Table head ───────────────────────────────────────── */
+thead tr { background: var(–thead-bg); transition: background 0.35s; }
+
+th.city-col {
+padding: 14px 20px; text-align: left; font-size: 11px;
+letter-spacing: 0.14em; color: var(–thead-sub);
+font-weight: 600; text-transform: uppercase;
+border-bottom: 1px solid var(–thead-border);
+width: 22%; white-space: nowrap; transition: color 0.3s;
+}
+th.day-group {
+padding: 14px 8px; text-align: center; font-size: 12px;
+letter-spacing: 0.1em; color: var(–thead-color);
+font-weight: 700; text-transform: uppercase;
+border-bottom: 1px solid var(–thead-border);
+border-left: 1px solid var(–thead-border);
+transition: color 0.3s, background 0.35s;
+}
+th.sub-sky, th.sub-temp {
+padding: 7px 4px; text-align: center; font-size: 10px;
+color: var(–thead-sub); letter-spacing: 0.1em;
+border-bottom: var(–thead-divider);
+transition: color 0.3s, background 0.35s;
+}
+th.sub-sky  { border-left: 1px solid var(–thead-border); width: 10%; }
+th.sub-temp { width: 13%; }
+th.sub-city-spacer { padding: 7px 20px; border-bottom: var(–thead-divider); }
+
+.col0 { background: var(–col0-tint); }
+.col1 { background: var(–col1-tint); }
+.col2 { background: var(–col2-tint); }
+
+/* ── Table body ───────────────────────────────────────── */
+tbody tr.even { background: var(–row-even); }
+tbody tr.odd  { background: var(–row-odd); }
+tbody tr { transition: background 0.15s; }
+tbody tr:hover { background: var(–row-hover) !important; }
+
+td.city-cell {
+padding: 16px 20px; font-size: clamp(12px,2.5vw,14px);
+font-weight: 600; color: var(–city-color); letter-spacing: 0.02em;
+border-bottom: 1px solid var(–row-border);
+white-space: nowrap; transition: color 0.3s;
+}
+td.sky-cell {
+padding: 12px 6px; text-align: center;
+border-bottom: 1px solid var(–row-border);
+border-left: 1px solid var(–cell-border);
+vertical-align: middle; transition: background 0.35s;
+}
+td.temp-cell {
+padding: 12px 8px; text-align: center;
+border-bottom: 1px solid var(–row-border);
+vertical-align: middle; transition: background 0.35s;
+}
+.body0 { background: var(–body0-tint); }
+.body1 { background: var(–body1-tint); }
+.body2 { background: var(–body2-tint); }
+
+.wx-icon { font-size: clamp(20px,4vw,26px); line-height: 1; }
+.wx-precip {
+font-size: clamp(9px,1.8vw,11px); margin-top: 4px;
+letter-spacing: 0.04em; color: var(–precip-low);
+transition: color 0.3s;
+}
+.wx-precip.high { color: var(–precip-high); font-weight: 700; }
+
+.temp-stack { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.temp-high { font-size: clamp(13px,2.5vw,15px); font-weight: 700;
+color: var(–high-color); transition: color 0.3s; }
+.temp-div  { width: 1px; height: 7px; background: var(–div-color);
+transition: background 0.3s; }
+.temp-low  { font-size: clamp(11px,2vw,13px); font-weight: 500;
+color: var(–low-color); transition: color 0.3s; }
+
+/* ── Loading / error states ───────────────────────────── */
+.state-row td {
+padding: 32px; text-align: center; font-size: 14px;
+color: var(–legend-color); border-bottom: none;
+}
+.spinner {
+display: inline-block; width: 20px; height: 20px;
+border: 2px solid var(–cell-border);
+border-top-color: var(–low-color);
+border-radius: 50%;
+animation: spin 0.8s linear infinite;
+margin-right: 8px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Legend ───────────────────────────────────────────── */
+.legend {
+margin-top: 18px; display: flex; flex-wrap: wrap;
+gap: 16px; justify-content: center; opacity: 0.72;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.legend-dot {
+width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+transition: background 0.3s;
+}
+.legend-item span { color: var(–legend-color); letter-spacing: 0.06em; transition: color 0.3s; }
+
+/* ── Footer ───────────────────────────────────────────── */
+footer {
+border-top: 1px solid var(–header-border);
+background: var(–header-bg);
+backdrop-filter: blur(14px);
+-webkit-backdrop-filter: blur(14px);
+padding: 16px 24px;
+display: flex; justify-content: center; align-items: center; gap: 12px;
+transition: background 0.4s, border-color 0.3s;
+}
+.footer-label {
+font-size: 11px; color: var(–subtitle-color);
+letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.3s;
+}
+
+/* ── Last-updated note ────────────────────────────────── */
+#last-updated {
+font-size: 10px; color: var(–legend-color);
+text-align: center; margin-top: 8px;
+letter-spacing: 0.06em; opacity: 0.6;
+transition: color 0.3s;
+}
+</style>
+
+</head>
+<body class="light">
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+
+<header>
+  <div class="header-inner">
+    <div class="title-row">
+      <span class="title-icon">🌤️</span>
+      <div>
+        <div class="title-text">ROUTE WEATHER</div>
+        <div class="subtitle-text">3-Day Corridor Forecast</div>
+      </div>
+    </div>
+    <div class="controls-row">
+
+```
+  <!-- East / West toggle -->
+  <div class="pill" id="region-pill">
+    <span class="pill-label" id="east-label">EAST</span>
+    <div class="toggle-track" id="region-track">
+      <div class="toggle-knob right" id="region-knob"></div>
+    </div>
+    <span class="pill-label active" id="west-label">WEST</span>
+  </div>
+
+  <!-- Start Day -->
+  <div class="start-day-wrap">
+    <span class="start-day-label">START DAY</span>
+    <select id="offset"></select>
+  </div>
+
+  <!-- Day badges -->
+  <div class="badges">
+    <div class="badge" id="badge0"></div>
+    <div class="badge" id="badge1"></div>
+    <div class="badge" id="badge2"></div>
+  </div>
+
+</div>
+```
+
+  </div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────── -->
+
+<main>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="city-col">City</th>
+          <th class="day-group col0" colspan="2" id="head0"></th>
+          <th class="day-group col1" colspan="2" id="head1"></th>
+          <th class="day-group col2" colspan="2" id="head2"></th>
+        </tr>
+        <tr>
+          <th class="sub-city-spacer"></th>
+          <th class="sub-sky  col0">SKY</th><th class="sub-temp col0">LO / HI</th>
+          <th class="sub-sky  col1">SKY</th><th class="sub-temp col1">LO / HI</th>
+          <th class="sub-sky  col2">SKY</th><th class="sub-temp col2">LO / HI</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--high-color)"></div>
+      <span>High temp</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--low-color)"></div>
+      <span>Low temp</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--precip-high)"></div>
+      <span>Precip &gt; 50%</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:var(--precip-low)"></div>
+      <span>Precip &le; 50%</span>
+    </div>
+    <span class="legend-item"><span>· Live data via Open-Meteo</span></span>
+  </div>
+  <div id="last-updated"></div>
+</main>
+
+<!-- ── Footer ─────────────────────────────────────────────── -->
+
+<footer>
+  <span class="footer-label">Appearance</span>
+  <div class="pill" id="theme-pill">
+    <span class="pill-label active" id="light-label">☀️ Light</span>
+    <div class="toggle-track" id="theme-track">
+      <div class="toggle-knob" id="theme-knob"></div>
+    </div>
+    <span class="pill-label" id="dark-label">🌙 Dark</span>
+  </div>
+</footer>
+
+<script>
+// ── City data with lat/lon for Open-Meteo ─────────────────
+const CITY_SETS = {
+  west: [
+    { name: "Albuquerque",   lat: 35.0844, lon: -106.6504 },
+    { name: "Flagstaff, AZ", lat: 35.1983, lon: -111.6513 },
+    { name: "Williams, AZ",  lat: 35.2495, lon: -112.1909 },
+    { name: "Kingman, AZ",   lat: 35.1895, lon: -114.0530 },
+    { name: "Barstow, CA",   lat: 34.8958, lon: -117.0228 },
+    { name: "Los Gatos, CA", lat: 37.2358, lon: -121.9624 },
+  ],
+  east: [
+    { name: "Albuquerque",   lat: 35.0844, lon: -106.6504 },
+    { name: "Tulsa, OK",     lat: 36.1540, lon: -95.9928  },
+    { name: "Joplin, MO",    lat: 37.0842, lon: -94.5133  },
+    { name: "Mentor, OH",    lat: 41.6667, lon: -81.3396  },
+    { name: "Belleville, OH",lat: 40.6223, lon: -82.5235  },
+    { name: "Erving, MA",    lat: 42.5973, lon: -72.4065  },
+  ],
+};
+
+// ── WMO weather code → emoji + label ─────────────────────
+function wmoInfo(code) {
+  if (code === 0)            return { icon: "☀️",  label: "Clear"          };
+  if (code <= 2)             return { icon: "⛅",  label: "Partly Cloudy"  };
+  if (code === 3)            return { icon: "☁️",  label: "Overcast"       };
+  if (code <= 49)            return { icon: "🌫️",  label: "Fog"            };
+  if (code <= 57)            return { icon: "🌦️",  label: "Drizzle"        };
+  if (code <= 65)            return { icon: "🌧️",  label: "Rain"           };
+  if (code <= 77)            return { icon: "❄️",  label: "Snow"           };
+  if (code <= 82)            return { icon: "🌧️",  label: "Showers"        };
+  if (code <= 86)            return { icon: "🌨️",  label: "Snow Showers"   };
+  if (code <= 99)            return { icon: "⛈️",  label: "Thunderstorm"   };
+  return                            { icon: "🌡️",  label: "Unknown"        };
+}
+
+// ── Days helper ───────────────────────────────────────────
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function dayLabel(offset) {
+  if (offset === 0) return "Today";
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  return DAYS[d.getDay()];
+}
+function colLabel(base, col) {
+  const tot = base + col;
+  if (tot === 0) return "Today";
+  const d = new Date(); d.setDate(d.getDate() + tot);
+  return DAYS[d.getDay()];
+}
+
+// ── State ─────────────────────────────────────────────────
+let region  = "west";
+let offset  = 0;
+let isDark  = false;
+let cache   = {};   // key: "lat,lon" → full 8-day forecast arrays
+
+// ── Populate offset dropdown ──────────────────────────────
+const offsetSel = document.getElementById("offset");
+for (let i = 0; i < 8; i++) {
+  const opt = document.createElement("option");
+  opt.value = i;
+  opt.textContent = i === 0 ? "0 (Today)" : `${i} (${dayLabel(i)})`;
+  offsetSel.appendChild(opt);
+}
+
+// ── Update day header labels ──────────────────────────────
+function updateLabels() {
+  for (let c = 0; c < 3; c++) {
+    const lbl = colLabel(offset, c);
+    document.getElementById(`head${c}`).textContent = lbl;
+    document.getElementById(`badge${c}`).textContent = lbl;
+  }
+}
+
+// ── Fetch Open-Meteo for one city ────────────────────────
+async function fetchCity(city) {
+  const key = `${city.lat},${city.lon}`;
+  if (cache[key]) return cache[key];
+
+  const url = `https://api.open-meteo.com/v1/forecast`
+    + `?latitude=${city.lat}&longitude=${city.lon}`
+    + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max`
+    + `&temperature_unit=fahrenheit&timezone=auto&forecast_days=10`;
+
+  const res  = await fetch(url);
+  const json = await res.json();
+  cache[key] = json.daily;
+  return json.daily;
+}
+
+// ── Render loading state ──────────────────────────────────
+function renderLoading() {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = `<tr class="state-row"><td colspan="7">
+    <span class="spinner"></span>Loading live weather data…
+  </td></tr>`;
+}
+
+// ── Render error state ────────────────────────────────────
+function renderError(msg) {
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = `<tr class="state-row"><td colspan="7">⚠️ ${msg}</td></tr>`;
+}
+
+// ── Render table rows from fetched data ───────────────────
+function renderRows(results) {
+  // results: array of { city, daily } in same order as CITY_SETS[region]
+  const tbody = document.getElementById("tbody");
+  const bodyClasses = ["body0","body1","body2"];
+  const colClasses  = ["col0", "col1", "col2"];
+
+  tbody.innerHTML = results.map(({ city, daily }, rowIdx) => {
+    const rowClass = rowIdx % 2 === 0 ? "even" : "odd";
+    let cells = `<td class="city-cell"><span style="margin-right:7px;opacity:0.35;font-size:10px">📍</span>${city.name}</td>`;
+
+    for (let d = 0; d < 3; d++) {
+      const dayIdx = offset + d;
+      if (dayIdx >= daily.weathercode.length) {
+        cells += `<td class="sky-cell ${bodyClasses[d]} ${colClasses[d]}">—</td>
+                  <td class="temp-cell ${bodyClasses[d]} ${colClasses[d]}">—</td>`;
+        continue;
+      }
+      const code   = daily.weathercode[dayIdx];
+      const high   = Math.round(daily.temperature_2m_max[dayIdx]);
+      const low    = Math.round(daily.temperature_2m_min[dayIdx]);
+      const precip = daily.precipitation_probability_max[dayIdx] ?? 0;
+      const wx     = wmoInfo(code);
+      const precipClass = precip > 50 ? "wx-precip high" : "wx-precip";
+
+      cells += `
+        <td class="sky-cell ${bodyClasses[d]} ${colClasses[d]}">
+          <div class="wx-icon">${wx.icon}</div>
+          <div class="${precipClass}">${precip}%</div>
+        </td>
+        <td class="temp-cell ${bodyClasses[d]} ${colClasses[d]}">
+          <div class="temp-stack">
+            <span class="temp-high">${high}°</span>
+            <div class="temp-div"></div>
+            <span class="temp-low">${low}°</span>
+          </div>
+        </td>`;
+    }
+
+    return `<tr class="${rowClass}">${cells}</tr>`;
+  }).join("");
+
+  // last updated
+  const now = new Date();
+  document.getElementById("last-updated").textContent =
+    `Last updated: ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} · Data: Open-Meteo.com`;
+}
+
+// ── Main data load ────────────────────────────────────────
+async function loadWeather() {
+  renderLoading();
+  updateLabels();
+  const cities = CITY_SETS[region];
+  try {
+    const results = await Promise.all(
+      cities.map(city => fetchCity(city).then(daily => ({ city, daily })))
+    );
+    renderRows(results);
+  } catch (err) {
+    console.error(err);
+    renderError("Could not load weather data. Check your connection and try refreshing.");
+  }
+}
+
+// ── East / West toggle ────────────────────────────────────
+document.getElementById("region-track").addEventListener("click", () => {
+  region = region === "west" ? "east" : "west";
+  const isWest = region === "west";
+  document.getElementById("region-knob").classList.toggle("right", isWest);
+  document.getElementById("west-label").classList.toggle("active", isWest);
+  document.getElementById("east-label").classList.toggle("active", !isWest);
+  loadWeather();
+});
+
+// ── Offset dropdown ───────────────────────────────────────
+offsetSel.addEventListener("change", e => {
+  offset = Number(e.target.value);
+  updateLabels();
+  // Re-render from cache (no refetch needed — data already covers 10 days)
+  const cities = CITY_SETS[region];
+  const cached = cities.map(city => {
+    const key = `${city.lat},${city.lon}`;
+    return cache[key] ? { city, daily: cache[key] } : null;
+  });
+  if (cached.every(Boolean)) {
+    renderRows(cached);
+  } else {
+    loadWeather();
+  }
+});
+
+// ── Theme toggle ──────────────────────────────────────────
+document.getElementById("theme-track").addEventListener("click", () => {
+  isDark = !isDark;
+  document.body.classList.toggle("dark",  isDark);
+  document.body.classList.toggle("light", !isDark);
+  document.getElementById("theme-knob").classList.toggle("right", isDark);
+  document.getElementById("light-label").classList.toggle("active", !isDark);
+  document.getElementById("dark-label").classList.toggle("active",  isDark);
+});
+
+// ── Init ──────────────────────────────────────────────────
+loadWeather();
+</script>
+
+</body>
+</html>
